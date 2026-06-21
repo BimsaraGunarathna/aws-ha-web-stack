@@ -58,9 +58,16 @@ variable "cpu_target" {
   default     = 50
 }
 
+variable "enable_https" {
+  description = "Serve HTTPS on :443 (with :80 redirecting to it). When false, the ALB serves the app directly over plain HTTP on :80 and no ACM certificate is needed."
+  type        = bool
+  default     = false
+}
+
 variable "acm_certificate_arn" {
-  description = "ARN of the ACM certificate for the HTTPS listener."
+  description = "ARN of the ACM certificate for the HTTPS listener. Required only when enable_https = true."
   type        = string
+  default     = ""
 }
 
 variable "tags" {

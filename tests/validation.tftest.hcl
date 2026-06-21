@@ -13,10 +13,6 @@ mock_provider "aws" {
   }
 }
 
-variables {
-  acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/0mockmockmock"
-}
-
 run "rejects_single_az" {
   command = plan
 

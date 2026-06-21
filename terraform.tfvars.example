@@ -11,4 +11,9 @@ desired_capacity    = 2
 db_engine           = "postgres"
 db_name             = "appdb"
 db_username         = "appadmin"
-acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/CHANGE-ME"
+
+# HTTPS is opt-in. Leave enable_https = false (default) to serve plain HTTP on :80
+# with no certificate. To serve HTTPS, set enable_https = true and supply an ACM
+# certificate ARN for the ALB's domain:
+# enable_https        = true
+# acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/CHANGE-ME"

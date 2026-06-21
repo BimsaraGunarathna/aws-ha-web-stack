@@ -38,6 +38,7 @@ module "compute" {
   max_size            = var.max_size
   desired_capacity    = var.desired_capacity
   cpu_target          = var.cpu_target
+  enable_https        = var.enable_https
   acm_certificate_arn = var.acm_certificate_arn
   tags                = local.common_tags
 }

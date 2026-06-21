@@ -8,7 +8,7 @@ strict tiered security groups, remote state, and CloudWatch monitoring.
 
 ```
                     Internet
-                       │  HTTPS :443  (HTTP :80 → 301 redirect)
+                       │  HTTP :80   (or HTTPS :443 with :80 → 301 when enable_https=true)
                 ┌──────▼──────┐
                 │     ALB     │   public subnets (2 AZs)
                 │  (alb-sg)   │
@@ -25,6 +25,10 @@ strict tiered security groups, remote state, and CloudWatch monitoring.
                   │Postgres │   db-sg: :5432 from instances only
                   └─────────┘
 ```
+
+By default the ALB serves the app over plain HTTP on :80 (zero-friction demo, no
+certificate needed). Set `enable_https = true` to serve HTTPS on :443 with :80
+redirecting to it — see step 3 below.
 
 **Security model** — traffic flows strictly `internet → ALB → instances → DB`.
 Each tier's security group only accepts traffic from the tier directly in front of it:
@@ -55,7 +59,7 @@ on internal resource properties without needing direct resource access.
 2. ASG with ≥2 instances (`min_size`/`desired_capacity` default to 2) ✔
 3. ALB distributes traffic across the ASG ✔
 4. Managed database (RDS PostgreSQL) ✔
-5. Security rules — ALB :443 HTTPS (with :80 → :443 redirect), instances :80 from ALB only, DB from instances only ✔
+5. Security rules — ALB :80 HTTP (optionally :443 HTTPS with :80 → :443 redirect), instances :80 from ALB only, DB from instances only ✔
 6. Variables + modules throughout ✔
 7. `outputs.tf` exposes the load balancer URL, DB endpoint, ASG name, dashboard, VPC ✔
 8. Remote state in S3 + DynamoDB locking (`backend.tf` + `bootstrap/`) ✔
@@ -94,11 +98,15 @@ cd ..
 terraform init -backend-config="bucket=<your-globally-unique-bucket>"
 ```
 
-### 3. Provide an ACM certificate ARN
+### 3. (Optional) Enable HTTPS
 
-The ALB serves HTTPS. You need an ACM certificate in the target region. If you don't have one yet, request it in the AWS Console or via CLI, then pass the ARN:
+By default the ALB serves the app over **plain HTTP on port 80** — no certificate
+required, so `apply` works out of the box. To serve HTTPS instead (ALB listens on
+:443 and redirects :80 → :443), set `enable_https = true` and supply an ACM
+certificate in the target region:
 
 ```bash
+export TF_VAR_enable_https=true
 export TF_VAR_acm_certificate_arn='arn:aws:acm:...'
 ```
 
@@ -149,7 +157,8 @@ terraform apply -var-file="environments/prod.tfvars"
 | `instance_type` | `t3.micro` | App instance size |
 | `min_size` / `max_size` / `desired_capacity` | `2` / `4` / `2` | ASG bounds |
 | `cpu_target` | `50` | ASG target-tracking CPU % |
-| `acm_certificate_arn` | — | **Required**, ACM cert ARN for ALB HTTPS |
+| `enable_https` | `false` | Serve HTTPS on :443 (:80 redirects). When off, ALB serves plain HTTP on :80 |
+| `acm_certificate_arn` | `""` | ACM cert ARN for ALB HTTPS — required only when `enable_https = true` |
 | `db_engine` | `postgres` | `postgres` (5432) or `mysql` (3306) |
 | `db_engine_version` | `16` | RDS engine version |
 | `db_instance_class` | `db.t3.micro` | RDS size |
@@ -171,8 +180,9 @@ These are deliberate demo trade-offs — worth calling out rather than hiding:
   set it to `false` for production, and enable `multi_az`. Deletion protection is already
   enabled by default.
 - **State:** real setups separate state per environment and lock down the bucket policy.
-- **ACM:** the demo assumes a pre-existing ACM certificate. Production automates cert
-  provisioning and DNS validation via Route 53.
+- **HTTPS/ACM:** the demo defaults to plain HTTP on :80 for zero-friction setup.
+  Production should set `enable_https = true` with an ACM certificate; cert provisioning
+  and DNS validation are best automated via Route 53.
 
 ## Testing & quality gates
 

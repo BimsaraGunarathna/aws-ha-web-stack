@@ -79,7 +79,9 @@ resource "aws_lb_target_group" "this" {
   tags = merge(var.tags, { Name = "${var.project_name}-tg" })
 }
 
+# HTTPS path (enable_https = true): :443 serves the app, :80 redirects to it.
 resource "aws_lb_listener" "https" {
+  count             = var.enable_https ? 1 : 0
   load_balancer_arn = aws_lb.this.arn
   port              = 443
   protocol          = "HTTPS"
@@ -90,9 +92,17 @@ resource "aws_lb_listener" "https" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.this.arn
   }
+
+  lifecycle {
+    precondition {
+      condition     = length(var.acm_certificate_arn) > 0
+      error_message = "acm_certificate_arn is required when enable_https = true."
+    }
+  }
 }
 
 resource "aws_lb_listener" "http_redirect" {
+  count             = var.enable_https ? 1 : 0
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
@@ -104,6 +114,21 @@ resource "aws_lb_listener" "http_redirect" {
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
+  }
+}
+
+# Plain-HTTP path (enable_https = false): :80 forwards straight to the instances.
+# Zero-friction demo with no ACM certificate required.
+#trivy:ignore:AWS-0054 -- Plain HTTP is the intentional zero-friction demo default; set enable_https=true for TLS.
+resource "aws_lb_listener" "http_forward" {
+  count             = var.enable_https ? 0 : 1
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this.arn
   }
 }
 

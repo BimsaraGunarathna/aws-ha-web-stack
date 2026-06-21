@@ -1,6 +1,6 @@
 output "load_balancer_url" {
-  description = "Public HTTPS URL of the application."
-  value       = "https://${module.compute.alb_dns_name}"
+  description = "Public URL of the application (HTTPS when enable_https = true, otherwise HTTP)."
+  value       = "${var.enable_https ? "https" : "http"}://${module.compute.alb_dns_name}"
 }
 
 output "load_balancer_dns" {

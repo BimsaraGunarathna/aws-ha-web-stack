@@ -75,9 +75,16 @@ variable "cpu_target" {
   default     = 50
 }
 
+variable "enable_https" {
+  description = "Serve HTTPS on :443 with :80 redirecting to it. When false (default), the ALB serves the app over plain HTTP on :80 and no ACM certificate is needed -- the zero-friction demo path."
+  type        = bool
+  default     = false
+}
+
 variable "acm_certificate_arn" {
-  description = "ARN of the ACM certificate for the ALB HTTPS listener."
+  description = "ARN of the ACM certificate for the ALB HTTPS listener. Required only when enable_https = true."
   type        = string
+  default     = ""
 }
 
 # ---- Database ----

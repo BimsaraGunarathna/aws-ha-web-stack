@@ -23,10 +23,6 @@ mock_provider "aws" {
   }
 }
 
-variables {
-  acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/0mockmockmock"
-}
-
 run "networking_spans_two_azs" {
   command = plan
 
@@ -65,6 +61,8 @@ run "asg_has_at_least_two_instances" {
   }
 }
 
+# Default (enable_https = false): the ALB serves the app directly over HTTP on :80,
+# satisfying requirement 5a literally and needing no ACM certificate.
 run "load_balancer_is_public_application_lb" {
   command = plan
 
@@ -78,11 +76,34 @@ run "load_balancer_is_public_application_lb" {
   }
   assert {
     condition     = module.compute.lb_listener.port == 80
-    error_message = "ALB must have an HTTP redirect listener on port 80."
+    error_message = "ALB must have a listener on port 80."
   }
   assert {
+    condition     = module.compute.lb_listener.default_action[0].type == "forward"
+    error_message = "In HTTP mode the :80 listener must forward to the instances."
+  }
+  assert {
+    condition     = module.compute.lb_listener_https == null
+    error_message = "No HTTPS listener should exist when enable_https = false."
+  }
+}
+
+# Opt-in HTTPS: :443 serves the app and :80 redirects to it.
+run "https_mode_adds_443_and_redirects_80" {
+  command = plan
+
+  variables {
+    enable_https        = true
+    acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/0mockmockmock"
+  }
+
+  assert {
     condition     = module.compute.lb_listener_https.port == 443
-    error_message = "ALB must have an HTTPS listener on port 443."
+    error_message = "ALB must have an HTTPS listener on port 443 when enable_https = true."
+  }
+  assert {
+    condition     = module.compute.lb_listener.default_action[0].type == "redirect"
+    error_message = "In HTTPS mode the :80 listener must redirect to :443."
   }
 }
 
