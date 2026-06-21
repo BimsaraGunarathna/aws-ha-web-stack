@@ -20,6 +20,12 @@ variable "az_count" {
   }
 }
 
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs for security auditing."
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   description = "Common tags."
   type        = map(string)

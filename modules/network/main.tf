@@ -87,16 +87,20 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+data "aws_caller_identity" "current" {}
+
 # ---- VPC Flow Logs -----------------------------------------------------------
 # Captures IP traffic metadata for security auditing and troubleshooting.
 resource "aws_kms_key" "flow_logs" {
+  count                   = var.enable_vpc_flow_logs ? 1 : 0
   description             = "KMS key for VPC Flow Logs encryption."
   deletion_window_in_days = 7
   enable_key_rotation     = true
 }
 
 resource "aws_kms_key_policy" "flow_logs" {
-  key_id = aws_kms_key.flow_logs.id
+  count  = var.enable_vpc_flow_logs ? 1 : 0
+  key_id = aws_kms_key.flow_logs[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -114,21 +118,22 @@ resource "aws_kms_key_policy" "flow_logs" {
 }
 
 resource "aws_kms_alias" "flow_logs" {
+  count         = var.enable_vpc_flow_logs ? 1 : 0
   name          = "alias/${var.project_name}-flow-logs-key"
-  target_key_id = aws_kms_key.flow_logs.key_id
+  target_key_id = aws_kms_key.flow_logs[0].key_id
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_cloudwatch_log_group" "flow_logs" {
+  count             = var.enable_vpc_flow_logs ? 1 : 0
   name              = "/aws/vpc/${var.project_name}-flow-logs"
   retention_in_days = 365
-  kms_key_id        = aws_kms_key.flow_logs.arn
+  kms_key_id        = aws_kms_key.flow_logs[0].arn
   tags              = var.tags
 }
 
 resource "aws_iam_role" "flow_logs" {
-  name = "${var.project_name}-flow-logs-role"
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.project_name}-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -145,8 +150,9 @@ resource "aws_iam_role" "flow_logs" {
 }
 
 resource "aws_iam_role_policy" "flow_logs" {
-  name = "${var.project_name}-flow-logs-policy"
-  role = aws_iam_role.flow_logs.id
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.project_name}-flow-logs-policy"
+  role  = aws_iam_role.flow_logs[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -159,17 +165,18 @@ resource "aws_iam_role_policy" "flow_logs" {
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams"
       ]
-      Resource = "${aws_cloudwatch_log_group.flow_logs.arn}:*"
+      Resource = "${aws_cloudwatch_log_group.flow_logs[0].arn}:*"
     }]
   })
 }
 
 resource "aws_flow_log" "this" {
+  count                    = var.enable_vpc_flow_logs ? 1 : 0
   vpc_id                   = aws_vpc.this.id
   traffic_type             = "ALL"
   log_destination_type     = "cloud-watch-logs"
-  log_destination          = aws_cloudwatch_log_group.flow_logs.arn
-  iam_role_arn             = aws_iam_role.flow_logs.arn
+  log_destination          = aws_cloudwatch_log_group.flow_logs[0].arn
+  iam_role_arn             = aws_iam_role.flow_logs[0].arn
   max_aggregation_interval = 600
 
   tags = merge(var.tags, { Name = "${var.project_name}-flow-log" })

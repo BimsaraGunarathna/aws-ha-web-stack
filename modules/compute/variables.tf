@@ -58,6 +58,11 @@ variable "cpu_target" {
   default     = 50
 }
 
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for the HTTPS listener."
+  type        = string
+}
+
 variable "tags" {
   description = "Common tags."
   type        = map(string)

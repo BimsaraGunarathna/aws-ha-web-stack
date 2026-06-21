@@ -1,3 +1,37 @@
+# IAM role for EC2 instances: SSM access + CloudWatch Logs/Metrics.
+resource "aws_iam_role" "instance" {
+  name = "${var.project_name}-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch" {
+  role       = aws_iam_role.instance.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_instance_profile" "instance" {
+  name = "${var.project_name}-instance-profile"
+  role = aws_iam_role.instance.name
+  tags = var.tags
+}
+
 # Latest Amazon Linux 2023 AMI, looked up at plan time so we never pin a stale image.
 data "aws_ami" "al2023" {
   most_recent = true
@@ -45,15 +79,31 @@ resource "aws_lb_target_group" "this" {
   tags = merge(var.tags, { Name = "${var.project_name}-tg" })
 }
 
-#trivy:ignore:AWS-0054 -- Demo uses HTTP for simplicity; production adds HTTPS/ACM.
-resource "aws_lb_listener" "http" {
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.acm_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.this.arn
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -63,6 +113,9 @@ resource "aws_launch_template" "this" {
   image_id      = data.aws_ami.al2023.id
   instance_type = var.instance_type
   user_data     = base64encode(file("${path.module}/user_data.sh"))
+  iam_instance_profile {
+    name = aws_iam_instance_profile.instance.name
+  }
 
   vpc_security_group_ids = [var.instance_sg_id]
 
@@ -88,7 +141,7 @@ resource "aws_autoscaling_group" "this" {
   vpc_zone_identifier       = var.private_subnet_ids
   target_group_arns         = [aws_lb_target_group.this.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 120
+  health_check_grace_period = 300
 
   min_size         = var.min_size
   max_size         = var.max_size

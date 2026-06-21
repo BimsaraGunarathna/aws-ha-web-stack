@@ -23,9 +23,8 @@ mock_provider "aws" {
   }
 }
 
-# db_password is required; supply a dummy that satisfies validation.
 variables {
-  db_password = "testpw12"
+  acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/0mockmockmock"
 }
 
 run "networking_spans_two_azs" {
@@ -79,7 +78,11 @@ run "load_balancer_is_public_application_lb" {
   }
   assert {
     condition     = module.compute.lb_listener.port == 80
-    error_message = "ALB listener must serve HTTP on port 80."
+    error_message = "ALB must have an HTTP redirect listener on port 80."
+  }
+  assert {
+    condition     = module.compute.lb_listener_https.port == 443
+    error_message = "ALB must have an HTTPS listener on port 443."
   }
 }
 

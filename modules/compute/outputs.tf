@@ -30,6 +30,11 @@ output "target_group" {
 }
 
 output "lb_listener" {
-  description = "ALB HTTP listener resource."
-  value       = aws_lb_listener.http
+  description = "ALB HTTP redirect listener resource (port 80)."
+  value       = aws_lb_listener.http_redirect
+}
+
+output "lb_listener_https" {
+  description = "ALB HTTPS listener resource (port 443)."
+  value       = aws_lb_listener.https
 }

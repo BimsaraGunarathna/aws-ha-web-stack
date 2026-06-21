@@ -1,6 +1,6 @@
 output "load_balancer_url" {
-  description = "Public URL of the application."
-  value       = "http://${module.compute.alb_dns_name}"
+  description = "Public HTTPS URL of the application."
+  value       = "https://${module.compute.alb_dns_name}"
 }
 
 output "load_balancer_dns" {
@@ -16,6 +16,16 @@ output "database_endpoint" {
 output "database_name" {
   description = "Initial database name."
   value       = module.database.db_name
+}
+
+output "database_port" {
+  description = "Database port."
+  value       = local.db_port
+}
+
+output "database_username" {
+  description = "Database master username."
+  value       = var.db_username
 }
 
 output "autoscaling_group_name" {

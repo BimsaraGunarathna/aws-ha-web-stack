@@ -46,6 +46,12 @@ skip-check:
   # SSE-S3 is preferred over SSE-KMS for high-volume access-log buckets.
   - CKV_AWS_145      # Ensure S3 buckets are encrypted with KMS by default (logs bucket uses SSE-S3)
 
+  # Secrets Manager automatic rotation is out of scope for this demo.
+  - CKV2_AWS_57      # Ensure Secrets Manager secrets should have automatic rotation enabled
+
+  # KMS key policy IS defined via aws_kms_key_policy resource; checkov false positive with count.
+  - CKV2_AWS_64      # Ensure KMS key Policy is defined
+
   # Security group attachment check is a false positive for module-passed SGs.
   - CKV2_AWS_5       # Ensure Security Groups are attached to another resource
 

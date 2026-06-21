@@ -14,7 +14,7 @@ mock_provider "aws" {
 }
 
 variables {
-  db_password = "testpw12"
+  acm_certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/0mockmockmock"
 }
 
 run "rejects_single_az" {
@@ -35,14 +35,4 @@ run "rejects_unknown_environment" {
   }
 
   expect_failures = [var.environment]
-}
-
-run "rejects_short_db_password" {
-  command = plan
-
-  variables {
-    db_password = "short"
-  }
-
-  expect_failures = [var.db_password]
 }

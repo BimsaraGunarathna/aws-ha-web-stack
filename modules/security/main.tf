@@ -40,10 +40,37 @@ resource "aws_security_group" "instance" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # HTTPS only: dnf updates, AWS API calls. Return traffic is stateful.
-  #trivy:ignore:AWS-0104 -- Egress is restricted to TCP/443 (HTTPS) only; 0.0.0.0/0 is required for dynamic package mirrors and AWS endpoints.
+  # dnf requires DNS (53) and package mirrors (80/443). Return traffic is stateful.
+  #trivy:ignore:AWS-0104 -- DNS (UDP) to 0.0.0.0/0 is required for package repository resolution on first boot.
   egress {
-    description = "HTTPS outbound (package installs, AWS APIs)"
+    description = "DNS (UDP)"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  #trivy:ignore:AWS-0104 -- DNS (TCP) to 0.0.0.0/0 is required for package repository resolution on first boot.
+  egress {
+    description = "DNS (TCP)"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  #trivy:ignore:AWS-0104 -- HTTP to 0.0.0.0/0 is required for dnf package mirrors that do not support TLS.
+  egress {
+    description = "HTTP outbound (package mirrors)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  #trivy:ignore:AWS-0104 -- HTTPS to 0.0.0.0/0 is required for AWS API calls and TLS package mirrors.
+  egress {
+    description = "HTTPS outbound (AWS APIs, TLS mirrors)"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
