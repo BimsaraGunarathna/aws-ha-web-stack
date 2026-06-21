@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and adjust. Do NOT put secrets here if the file is
+# committed -- pass db_password via the environment instead:
+#   export TF_VAR_db_password='<strong-password>'
+
+aws_region       = "eu-central-1"
+project_name     = "flatrock-webapp"
+environment      = "dev"
+instance_type    = "t3.micro"
+min_size         = 2
+max_size         = 4
+desired_capacity = 2
+db_engine        = "postgres"
+db_name          = "appdb"
+db_username      = "appadmin"
