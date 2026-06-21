@@ -112,6 +112,28 @@ resource "aws_kms_key_policy" "flow_logs" {
         }
         Action   = "kms:*"
         Resource = "*"
+      },
+      {
+        # CloudWatch Logs encrypts log data with this key, so the Logs service
+        # principal must be allowed to use it for this account's log groups.
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws/vpc/${var.project_name}-flow-logs"
+          }
+        }
       }
     ]
   })
@@ -129,6 +151,10 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
   retention_in_days = var.flow_log_retention_days
   kms_key_id        = aws_kms_key.flow_logs[0].arn
   tags              = var.tags
+
+  # Ensure the key policy granting the Logs service access is in place first,
+  # otherwise CreateLogGroup can race ahead and fail with "KMS key ... not allowed".
+  depends_on = [aws_kms_key_policy.flow_logs]
 }
 
 resource "aws_iam_role" "flow_logs" {
