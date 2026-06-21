@@ -31,7 +31,7 @@ variable "state_bucket_name" {
 variable "lock_table_name" {
   description = "DynamoDB table name for state locking."
   type        = string
-  default     = "terraform-lock"
+  default     = "aws-ha-web-stack-tflock"
 }
 
 # ---- KMS keys ----------------------------------------------------------------

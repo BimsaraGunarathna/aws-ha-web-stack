@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Name prefix for all resources."
   type        = string
-  default     = "demo-webapp"
+  default     = "aws-ha-web-stack"
 }
 
 variable "environment" {

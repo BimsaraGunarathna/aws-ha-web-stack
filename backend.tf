@@ -9,10 +9,10 @@
 #
 terraform {
   backend "s3" {
-    bucket         = "myproject-tfstate-CHANGE-ME" # <-- must be globally unique
+    bucket         = "aws-ha-web-stack-tfstate-CHANGE-ME" # <-- must be globally unique
     key            = "webapp/terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "terraform-lock"
+    dynamodb_table = "aws-ha-web-stack-tflock"
     encrypt        = true
   }
 }

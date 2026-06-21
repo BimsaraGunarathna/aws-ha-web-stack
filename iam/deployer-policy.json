@@ -89,8 +89,8 @@
         "iam:RemoveRoleFromInstanceProfile"
       ],
       "Resource": [
-        "arn:aws:iam::*:role/demo-webapp-*",
-        "arn:aws:iam::*:instance-profile/demo-webapp-*"
+        "arn:aws:iam::*:role/aws-ha-web-stack-*",
+        "arn:aws:iam::*:instance-profile/aws-ha-web-stack-*"
       ]
     },
     {

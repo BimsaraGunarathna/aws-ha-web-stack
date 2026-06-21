@@ -14,71 +14,72 @@ HTTPS instead.)
 ## Prerequisites
 
 - Terraform >= 1.5 and the AWS CLI installed
-- An AWS account where you can create an IAM user (or assume an admin role)
+- A clone of this repo (the `iam/*.json` policy documents are used in step 1)
+- An AWS account with Console access to IAM (to create the policies and role)
 
-## 1. Create a scoped deployer role and configure it locally
+## 1. Create the scoped deployer role from the AWS Console
 
 No admin access. The stack creates IAM roles, KMS keys, and Secrets Manager
 secrets, so the deployer needs those permissions — but scoped to this project's
-resources and region. The policy documents live in [`iam/`](iam/):
+resources (`aws-ha-web-stack-*`, `aws-ha-web-stack-tfstate-*`,
+`aws-ha-web-stack-tflock`) and to `us-east-1`. After cloning the repo you create
+two customer-managed policies and one role in the IAM console, pasting in the JSON
+documents from [`iam/`](iam/):
 
-- [`iam/deployer-policy.json`](iam/deployer-policy.json) — EC2/VPC,
-  Auto Scaling, ELB, RDS, CloudWatch/Logs, KMS, Secrets Manager (all restricted to
-  `aws:RequestedRegion = us-east-1`), and IAM limited to `demo-webapp-*` roles
-  and instance profiles only.
-- [`iam/backend-policy.json`](iam/backend-policy.json) — S3 + DynamoDB
-  scoped to the `myproject-tfstate-*` state buckets and the `terraform-lock` lock table.
-- [`iam/trust-policy.json`](iam/trust-policy.json) — lets your
-  existing IAM identity assume the role (replace `ACCOUNT_ID`).
+| File | Becomes | Purpose |
+|------|---------|---------|
+| `iam/deployer-policy.json` | policy `aws-ha-web-stack-deployer-policy` | EC2/VPC, Auto Scaling, ELB, RDS, CloudWatch/Logs, KMS, Secrets Manager — all restricted to `us-east-1`; IAM scoped to `aws-ha-web-stack-*` roles/profiles |
+| `iam/backend-policy.json` | policy `aws-ha-web-stack-backend-policy` | S3 + DynamoDB scoped to the `aws-ha-web-stack-tfstate-*` buckets and `aws-ha-web-stack-tflock` lock table |
+| `iam/trust-policy.json` | trust policy on role `aws-ha-web-stack-deployer` | Lets your identity assume the role (replace `ACCOUNT_ID`) |
 
-> Deploying to a different region? Change `us-east-1` in
-> `deployer-policy.json` to match. If you customise `project_name` or the
-> state bucket/lock names, update the `demo-webapp-*` / `myproject-tfstate-*` /
-> `terraform-lock` patterns to match.
+> Deploying to a different region? Change `us-east-1` in `iam/deployer-policy.json`
+> before pasting. Renamed `project_name` or the state bucket/lock? Update the
+> `aws-ha-web-stack-*` / `aws-ha-web-stack-tfstate-*` / `aws-ha-web-stack-tflock`
+> patterns to match.
 
-**a. Create the two scoped policies and the role** (run once, with an existing
-identity that can manage IAM):
+### a. Create the two policies (IAM Console)
 
-```bash
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+1. Sign in to the **AWS Console → IAM → Policies → Create policy**.
+2. Click the **JSON** tab. Open `iam/deployer-policy.json` from your clone, copy
+   its **entire** contents, and paste — replacing everything in the editor.
+3. **Next**, name it `aws-ha-web-stack-deployer-policy`, **Create policy**.
+4. Repeat steps 1–3 with `iam/backend-policy.json`, naming it
+   `aws-ha-web-stack-backend-policy`.
 
-# Put your account ID into the trust policy.
-sed "s/ACCOUNT_ID/$ACCOUNT_ID/" iam/trust-policy.json > /tmp/trust.json
+### b. Create the deployer role (IAM Console)
 
-aws iam create-policy --policy-name webapp-deployer-policy \
-  --policy-document file://iam/deployer-policy.json
-aws iam create-policy --policy-name webapp-backend-policy \
-  --policy-document file://iam/backend-policy.json
+1. **IAM → Roles → Create role**.
+2. Trusted entity type: **Custom trust policy**. Paste the contents of
+   `iam/trust-policy.json`, replacing `ACCOUNT_ID` with your 12-digit account ID
+   (shown under your name, top-right of the console). **Next**.
+3. On **Add permissions**, search for and tick both
+   `aws-ha-web-stack-deployer-policy` and `aws-ha-web-stack-backend-policy`. **Next**.
+4. Role name: `aws-ha-web-stack-deployer`. **Create role**.
 
-aws iam create-role --role-name webapp-deployer \
-  --assume-role-policy-document file:///tmp/trust.json
+### c. Use the role locally for Terraform
 
-aws iam attach-role-policy --role-name webapp-deployer \
-  --policy-arn arn:aws:iam::$ACCOUNT_ID:policy/webapp-deployer-policy
-aws iam attach-role-policy --role-name webapp-deployer \
-  --policy-arn arn:aws:iam::$ACCOUNT_ID:policy/webapp-backend-policy
-```
-
-**b. Add a local profile that assumes the role.** Append to `~/.aws/config`
-(replace `ACCOUNT_ID`; `source_profile` is the identity allowed to assume it):
+Terraform runs from your machine, so it still needs local credentials that assume
+the role. Append to `~/.aws/config` (replace `ACCOUNT_ID`; `source_profile` is an
+existing local identity allowed to assume the role):
 
 ```ini
-[profile webapp-deployer]
-role_arn       = arn:aws:iam::ACCOUNT_ID:role/webapp-deployer
+[profile aws-ha-web-stack-deployer]
+role_arn       = arn:aws:iam::ACCOUNT_ID:role/aws-ha-web-stack-deployer
 source_profile = default
 region         = us-east-1
 ```
 
-**c. Select the profile and verify:**
+Select it and verify:
 
 ```bash
-export AWS_PROFILE=webapp-deployer
-aws sts get-caller-identity   # ARN should show assumed-role/webapp-deployer/...
+export AWS_PROFILE=aws-ha-web-stack-deployer
+aws sts get-caller-identity   # ARN should show assumed-role/aws-ha-web-stack-deployer/...
 ```
 
-> Already authenticate via SSO or another assumed role? You can attach the two
-> policies to your existing role/permission set instead of creating a new one —
-> just make sure `aws sts get-caller-identity` succeeds before continuing.
+> Prefer not to assume a role locally? In the console create an **IAM user**
+> instead, attach the same two policies, generate an access key, then
+> `aws configure --profile aws-ha-web-stack-deployer`. Either way, make sure
+> `aws sts get-caller-identity` succeeds before continuing.
 
 ## 2. Bootstrap remote state (one-time per region)
 
@@ -89,7 +90,7 @@ cd bootstrap
 terraform init
 terraform apply \
   -var="aws_region=us-east-1" \
-  -var="state_bucket_name=myproject-tfstate-<unique-suffix>"
+  -var="state_bucket_name=aws-ha-web-stack-tfstate-<unique-suffix>"
 cd ..
 ```
 
@@ -101,7 +102,7 @@ Point Terraform at the bucket from step 2 (region must match):
 
 ```bash
 terraform init -reconfigure \
-  -backend-config="bucket=myproject-tfstate-<unique-suffix>" \
+  -backend-config="bucket=aws-ha-web-stack-tfstate-<unique-suffix>" \
   -backend-config="region=us-east-1"
 ```
 

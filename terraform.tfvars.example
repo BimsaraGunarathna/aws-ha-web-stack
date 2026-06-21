@@ -2,7 +2,7 @@
 # The DB password is generated automatically and stored in AWS Secrets Manager.
 
 aws_region          = "eu-central-1"
-project_name        = "demo-webapp"
+project_name        = "aws-ha-web-stack"
 environment         = "dev"
 instance_type       = "t3.micro"
 min_size            = 2

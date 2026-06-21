@@ -6,15 +6,15 @@
       "Effect": "Allow",
       "Action": "s3:*",
       "Resource": [
-        "arn:aws:s3:::myproject-tfstate-*",
-        "arn:aws:s3:::myproject-tfstate-*/*"
+        "arn:aws:s3:::aws-ha-web-stack-tfstate-*",
+        "arn:aws:s3:::aws-ha-web-stack-tfstate-*/*"
       ]
     },
     {
       "Sid": "TerraformLockTable",
       "Effect": "Allow",
       "Action": "dynamodb:*",
-      "Resource": "arn:aws:dynamodb:*:*:table/terraform-lock"
+      "Resource": "arn:aws:dynamodb:*:*:table/aws-ha-web-stack-tflock"
     }
   ]
 }
