@@ -1,0 +1,8 @@
+# Trivy ignore file — suppresses intentional or false-positive findings.
+# See README.md "A note on the security scanners" for rationale.
+
+# Dockerfile: CI/toolbox container, not a long-running service.
+DS-0002
+
+# Dockerfile: HEALTHCHECK is not applicable to a one-shot CI toolbox.
+DS-0026

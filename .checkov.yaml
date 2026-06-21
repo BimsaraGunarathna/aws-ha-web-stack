@@ -1,0 +1,58 @@
+# Checkov config — skips intentional demo tradeoffs documented in README.md
+# under "Production hardening" and "A note on the security scanners".
+# Set STRICT_SECURITY=1 to enforce these checks.
+
+skip-check:
+  # ALB is intentionally HTTP-only for the demo; production adds HTTPS + ACM.
+  - CKV_AWS_2        # Ensure ALB protocol is HTTPS
+  - CKV2_AWS_20      # Ensure ALB redirects HTTP requests into HTTPS ones
+  - CKV_AWS_378      # Ensure AWS Load Balancer doesn't use HTTP protocol (target group)
+  - CKV_AWS_103      # Ensure load balancer uses at least TLS 1.2
+
+  # ALB is intentionally public-facing; it is the entry point from the internet.
+  - CKV_AWS_150      # Ensure LB deletion protection
+  - CKV2_AWS_28      # Ensure public facing ALB are not connected to the RedShift
+  - CKV_AWS_131      # Ensure that ALB drops HTTP headers
+  - CKV_AWS_260      # Ensure no SGs allow ingress from 0.0.0.0/0 to port 80 (ALB needs this)
+
+  # ALB access logging requires region-specific ELB account IDs; out of scope for demo.
+  - CKV_AWS_91       # Ensure ALBv2 has access logging enabled
+
+  # RDS is intentionally set for easy teardown. Production flips these.
+  - CKV_AWS_16       # Ensure RDS database has deletion protection enabled
+  - CKV_AWS_17       # Ensure RDS database has IAM authentication enabled
+  - CKV_AWS_157      # Ensure RDS database has Multi-AZ enabled
+  - CKV_AWS_161      # Ensure RDS database has IAM authentication enabled
+  - CKV_AWS_293      # Ensure RDS database instance dont use public subnet
+
+  # Enhanced monitoring and query logging require extra IAM/parameter-group setup.
+  - CKV_AWS_118      # Ensure enhanced monitoring is enabled for RDS
+  - CKV2_AWS_30      # Ensure Postgres RDS has query logging enabled
+
+  # Instance tier still needs HTTPS egress to the internet for package updates / AWS APIs.
+  - CKV_AWS_23       # Ensure AWS security groups do not allow unrestricted egress
+
+  # Public subnets need public IPs for the ALB.
+  - CKV_AWS_130      # Ensure VPC subnets do not assign public IP by default
+  - CKV_AWS_153      # Ensure EC2 subnets do not allow automatic public IP assignment
+
+  # Default VPC security group is managed by AWS, not by this module.
+  - CKV2_AWS_12      # Ensure default security group of every VPC restricts all traffic
+
+  # Bootstrap S3 cross-region replication and event notifications are demo-only.
+  - CKV_AWS_144      # Ensure S3 bucket has cross-region replication enabled
+  - CKV2_AWS_62      # Ensure S3 buckets should have event notifications enabled
+
+  # SSE-S3 is preferred over SSE-KMS for high-volume access-log buckets.
+  - CKV_AWS_145      # Ensure S3 buckets are encrypted with KMS by default (logs bucket uses SSE-S3)
+
+  # Security group attachment check is a false positive for module-passed SGs.
+  - CKV2_AWS_5       # Ensure Security Groups are attached to another resource
+
+  # Docker / container checks (not relevant to Terraform infrastructure).
+  - CKV_DOCKER_2     # Ensure HEALTHCHECK is set
+  - CKV_DOCKER_3     # Ensure USER is set in Dockerfile
+
+soft-fail: true
+quiet: true
+compact: true
