@@ -1,16 +1,24 @@
 # Three-tier security model. Traffic flows strictly: internet -> ALB -> instances -> DB.
 # Each tier only accepts traffic from the tier directly in front of it.
 
-# Tier 1: ALB. Public HTTP entrypoint.
+# Tier 1: ALB. Public HTTPS entrypoint (HTTP redirects to HTTPS).
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
-  description = "Allow inbound HTTP from the internet to the load balancer."
+  description = "Allow inbound HTTP and HTTPS from the internet to the load balancer."
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "HTTP from anywhere"
+    description = "HTTP from anywhere (redirects to HTTPS)"
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS from anywhere"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }

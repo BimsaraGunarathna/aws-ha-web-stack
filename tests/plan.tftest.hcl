@@ -107,13 +107,20 @@ run "database_is_private_and_encrypted" {
 run "security_tiers_are_chained_not_open" {
   command = plan
 
-  # ALB: HTTP/80 open to the internet.
+  # ALB: HTTP/80 and HTTPS/443 open to the internet.
   assert {
     condition = anytrue([
       for r in module.security.alb_security_group.ingress :
       r.from_port == 80 && contains(r.cidr_blocks, "0.0.0.0/0")
     ])
     error_message = "ALB SG must allow HTTP/80 from 0.0.0.0/0."
+  }
+  assert {
+    condition = anytrue([
+      for r in module.security.alb_security_group.ingress :
+      r.from_port == 443 && contains(r.cidr_blocks, "0.0.0.0/0")
+    ])
+    error_message = "ALB SG must allow HTTPS/443 from 0.0.0.0/0."
   }
 
   # Instances: port 80 present but NOT open to any CIDR (locked to the ALB SG).

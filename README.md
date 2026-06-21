@@ -28,7 +28,7 @@ strict tiered security groups, remote state, and CloudWatch monitoring.
 
 **Security model** — traffic flows strictly `internet → ALB → instances → DB`.
 Each tier's security group only accepts traffic from the tier directly in front of it:
-the ALB takes :80 from anywhere, instances take :80 *only* from the ALB's SG, and the
+the ALB takes :80 and :443 from anywhere, instances take :80 *only* from the ALB's SG, and the
 database takes :5432 *only* from the instances' SG. Instances and the database live in
 private subnets with no public IPs; outbound internet (for package installs) goes
 through a NAT gateway.
@@ -120,6 +120,10 @@ prints the serving instance ID and AZ). RDS takes several minutes to come up.
 
 ### 6. Tear down (avoid ongoing charges)
 
+> **Note:** RDS deletion protection is enabled. `terraform destroy` will fail until you
+> manually disable deletion protection in the AWS Console (RDS → Modify → Disable deletion
+> protection) or set `deletion_protection = false` in the module temporarily.
+
 ```bash
 terraform destroy -var-file="environments/dev.tfvars"
 # then, if you no longer need remote state:
@@ -164,7 +168,8 @@ These are deliberate demo trade-offs — worth calling out rather than hiding:
 
 - **NAT HA:** one NAT gateway is a single-AZ dependency. Production uses one per AZ.
 - **RDS:** `skip_final_snapshot = true` makes teardown easy but is unsafe for real data;
-  set it to `false` for production, and enable `multi_az`.
+  set it to `false` for production, and enable `multi_az`. Deletion protection is already
+  enabled by default.
 - **State:** real setups separate state per environment and lock down the bucket policy.
 - **ACM:** the demo assumes a pre-existing ACM certificate. Production automates cert
   provisioning and DNS validation via Route 53.
@@ -188,7 +193,7 @@ The **unit tests** (`tests/*.tftest.hcl`) use a `mock_provider`, so they run at
 `plan` level with no credentials and no billed resources. They assert the things
 that actually matter for this task:
 
-- the three-tier security model — ALB open on 80, instances reachable *only* via
+- the three-tier security model — ALB open on 80 and 443, instances reachable *only* via
   a security group (never a public CIDR), database reachable *only* from instances;
 - the ASG has ≥2 instances with ELB health checks;
 - the ALB is an internet-facing application LB on port 80;

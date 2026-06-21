@@ -3,7 +3,8 @@
 # Set STRICT_SECURITY=1 to enforce these checks.
 
 skip-check:
-  # ALB is intentionally HTTP-only for the demo; production adds HTTPS + ACM.
+  # ALB uses HTTPS externally but forwards HTTP internally to instances (TLS terminated at ALB).
+  # The HTTP:80 listener exists only to redirect to HTTPS:443.
   - CKV_AWS_2        # Ensure ALB protocol is HTTPS
   - CKV2_AWS_20      # Ensure ALB redirects HTTP requests into HTTPS ones
   - CKV_AWS_378      # Ensure AWS Load Balancer doesn't use HTTP protocol (target group)
@@ -18,7 +19,8 @@ skip-check:
   # ALB access logging requires region-specific ELB account IDs; out of scope for demo.
   - CKV_AWS_91       # Ensure ALBv2 has access logging enabled
 
-  # RDS is intentionally set for easy teardown. Production flips these.
+  # RDS deletion protection is enabled; skip_final_snapshot is variable-controlled (default true for dev).
+  # IAM database authentication is enabled but not used by the demo app.
   - CKV_AWS_16       # Ensure RDS database has deletion protection enabled
   - CKV_AWS_17       # Ensure RDS database has IAM authentication enabled
   - CKV_AWS_157      # Ensure RDS database has Multi-AZ enabled
