@@ -46,6 +46,24 @@ documents from [`iam/`](iam/):
 4. Repeat steps 1–3 with `iam/backend-policy.json`, naming it
    `aws-ha-web-stack-backend-policy`.
 
+**Prefer the CLI?** From the repo root, create both policies with
+`aws iam create-policy`. The `file://` prefix is required — without it the CLI
+treats the argument as the literal document and fails with
+`MalformedPolicyDocument: Syntax errors in policy`:
+
+```bash
+aws iam create-policy \
+  --policy-name aws-ha-web-stack-deployer-policy \
+  --policy-document file://iam/deployer-policy.json
+
+aws iam create-policy \
+  --policy-name aws-ha-web-stack-backend-policy \
+  --policy-document file://iam/backend-policy.json
+```
+
+(Run from inside `iam/`? Drop the directory: `file://deployer-policy.json`. To
+push later edits, use `aws iam create-policy-version --set-as-default` instead.)
+
 ### b. Create the deployer role (IAM Console)
 
 1. **IAM → Roles → Create role**.
@@ -55,6 +73,27 @@ documents from [`iam/`](iam/):
 3. On **Add permissions**, search for and tick both
    `aws-ha-web-stack-deployer-policy` and `aws-ha-web-stack-backend-policy`. **Next**.
 4. Role name: `aws-ha-web-stack-deployer`. **Create role**.
+
+**Prefer the CLI?** Same `file://` pattern as the policies, but the role takes the
+trust document on creation and the permissions are *attached* afterwards. First
+substitute your account ID into the trust policy (`file://` won't edit the
+`ACCOUNT_ID` placeholder for you):
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+sed "s/ACCOUNT_ID/$ACCOUNT_ID/" iam/trust-policy.json > /tmp/trust.json
+
+aws iam create-role \
+  --role-name aws-ha-web-stack-deployer \
+  --assume-role-policy-document file:///tmp/trust.json
+
+aws iam attach-role-policy --role-name aws-ha-web-stack-deployer \
+  --policy-arn arn:aws:iam::$ACCOUNT_ID:policy/aws-ha-web-stack-deployer-policy
+aws iam attach-role-policy --role-name aws-ha-web-stack-deployer \
+  --policy-arn arn:aws:iam::$ACCOUNT_ID:policy/aws-ha-web-stack-backend-policy
+```
+
+(Note the triple slash: `file://` + the absolute path `/tmp/trust.json`.)
 
 ### c. Use the role locally for Terraform
 
