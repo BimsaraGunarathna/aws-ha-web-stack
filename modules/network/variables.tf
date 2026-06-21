@@ -26,6 +26,18 @@ variable "enable_vpc_flow_logs" {
   default     = true
 }
 
+variable "flow_log_retention_days" {
+  description = "Retention period (days) for the VPC Flow Logs log group."
+  type        = number
+  default     = 365
+}
+
+variable "kms_deletion_window_days" {
+  description = "Waiting period (days) before the Flow Logs KMS key is deleted."
+  type        = number
+  default     = 7
+}
+
 variable "tags" {
   description = "Common tags."
   type        = map(string)

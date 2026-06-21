@@ -43,8 +43,8 @@ through a NAT gateway.
 |--------|----------------|
 | `modules/network`  | VPC, public/private subnets across 2 AZs, IGW, NAT gateway, route tables |
 | `modules/security` | The three tiered security groups (ALB, instance, database) |
-| `modules/compute`  | ALB + target group + listener, launch template, Auto Scaling Group, target-tracking scaling policy, CloudWatch alarm + dashboard |
-| `modules/database` | RDS subnet group + managed PostgreSQL instance |
+| `modules/compute`  | ALB + target group + listeners, IAM instance profile (SSM + CloudWatch), launch template, Auto Scaling Group, target-tracking scaling policy, CloudWatch alarm + dashboard |
+| `modules/database` | RDS subnet group + managed PostgreSQL/MySQL instance, KMS key, auto-generated password in Secrets Manager |
 
 The root module (`main.tf`) wires the modules together; `variables.tf`, `outputs.tf`,
 `providers.tf`, `versions.tf`, and `backend.tf` configure the rest.
@@ -128,12 +128,12 @@ prints the serving instance ID and AZ). RDS takes several minutes to come up.
 
 ### 6. Tear down (avoid ongoing charges)
 
-> **Note:** RDS deletion protection is enabled. `terraform destroy` will fail until you
-> manually disable deletion protection in the AWS Console (RDS → Modify → Disable deletion
-> protection) or set `deletion_protection = false` in the module temporarily.
+> **Note:** RDS deletion protection is enabled by default (`db_deletion_protection = true`).
+> `terraform destroy` will fail while it is on, so first disable it with an apply, then destroy:
 
 ```bash
-terraform destroy -var-file="environments/dev.tfvars"
+terraform apply   -var-file="environments/dev.tfvars" -var="db_deletion_protection=false"
+terraform destroy -var-file="environments/dev.tfvars" -var="db_deletion_protection=false"
 # then, if you no longer need remote state:
 cd bootstrap && terraform destroy -var="state_bucket_name=<your-bucket>"
 ```
@@ -154,6 +154,8 @@ terraform apply -var-file="environments/prod.tfvars"
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `aws_region` | `eu-central-1` | Region to deploy into |
+| `az_count` | `2` | Number of AZs to spread across (min 2) |
+| `enable_vpc_flow_logs` | `true` | Capture VPC flow logs to CloudWatch (KMS-encrypted) |
 | `instance_type` | `t3.micro` | App instance size |
 | `min_size` / `max_size` / `desired_capacity` | `2` / `4` / `2` | ASG bounds |
 | `cpu_target` | `50` | ASG target-tracking CPU % |
@@ -165,6 +167,8 @@ terraform apply -var-file="environments/prod.tfvars"
 | `db_allocated_storage` | `20` | RDS storage (GB) |
 | `db_multi_az` | `false` | RDS standby in a 2nd AZ |
 | `db_skip_final_snapshot` | `true` | Skip final snapshot on delete |
+| `db_deletion_protection` | `true` | Block accidental RDS deletion — set `false` to allow `terraform destroy` |
+| `db_backup_retention_period` | `7` | Days to retain automated RDS backups |
 
 ## Cost note
 

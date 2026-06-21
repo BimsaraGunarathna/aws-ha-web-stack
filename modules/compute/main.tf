@@ -39,7 +39,7 @@ data "aws_ami" "al2023" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = [var.ami_name_pattern]
   }
   filter {
     name   = "virtualization-type"
@@ -67,13 +67,13 @@ resource "aws_lb_target_group" "this" {
   target_type = "instance"
 
   health_check {
-    path                = "/"
+    path                = var.health_check_path
     protocol            = "HTTP"
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    timeout             = 5
-    interval            = 15
-    matcher             = "200"
+    healthy_threshold   = var.health_check_healthy_threshold
+    unhealthy_threshold = var.health_check_unhealthy_threshold
+    timeout             = var.health_check_timeout
+    interval            = var.health_check_interval
+    matcher             = var.health_check_matcher
   }
 
   tags = merge(var.tags, { Name = "${var.project_name}-tg" })
@@ -85,7 +85,7 @@ resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.this.arn
   port              = 443
   protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  ssl_policy        = var.ssl_policy
   certificate_arn   = var.acm_certificate_arn
 
   default_action {
@@ -166,7 +166,7 @@ resource "aws_autoscaling_group" "this" {
   vpc_zone_identifier       = var.private_subnet_ids
   target_group_arns         = [aws_lb_target_group.this.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 300
+  health_check_grace_period = var.health_check_grace_period
 
   min_size         = var.min_size
   max_size         = var.max_size
@@ -181,7 +181,7 @@ resource "aws_autoscaling_group" "this" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50
+      min_healthy_percentage = var.instance_refresh_min_healthy_percentage
     }
   }
 
@@ -217,7 +217,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   namespace           = "AWS/ApplicationELB"
   period              = 60
   statistic           = "Sum"
-  threshold           = 5
+  threshold           = var.alb_5xx_alarm_threshold
   alarm_description   = "Target 5xx responses exceeded threshold."
   treat_missing_data  = "notBreaching"
 

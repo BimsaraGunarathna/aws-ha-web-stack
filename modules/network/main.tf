@@ -94,7 +94,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_kms_key" "flow_logs" {
   count                   = var.enable_vpc_flow_logs ? 1 : 0
   description             = "KMS key for VPC Flow Logs encryption."
-  deletion_window_in_days = 7
+  deletion_window_in_days = var.kms_deletion_window_days
   enable_key_rotation     = true
 }
 
@@ -126,7 +126,7 @@ resource "aws_kms_alias" "flow_logs" {
 resource "aws_cloudwatch_log_group" "flow_logs" {
   count             = var.enable_vpc_flow_logs ? 1 : 0
   name              = "/aws/vpc/${var.project_name}-flow-logs"
-  retention_in_days = 365
+  retention_in_days = var.flow_log_retention_days
   kms_key_id        = aws_kms_key.flow_logs[0].arn
   tags              = var.tags
 }

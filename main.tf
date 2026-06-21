@@ -44,17 +44,19 @@ module "compute" {
 }
 
 module "database" {
-  source              = "./modules/database"
-  project_name        = var.project_name
-  private_subnet_ids  = module.network.private_subnet_ids
-  db_sg_id            = module.security.database_sg_id
-  engine              = var.db_engine
-  engine_version      = var.db_engine_version
-  instance_class      = var.db_instance_class
-  allocated_storage   = var.db_allocated_storage
-  db_name             = var.db_name
-  db_username         = var.db_username
-  multi_az            = var.db_multi_az
-  skip_final_snapshot = var.db_skip_final_snapshot
-  tags                = local.common_tags
+  source                  = "./modules/database"
+  project_name            = var.project_name
+  private_subnet_ids      = module.network.private_subnet_ids
+  db_sg_id                = module.security.database_sg_id
+  engine                  = var.db_engine
+  engine_version          = var.db_engine_version
+  instance_class          = var.db_instance_class
+  allocated_storage       = var.db_allocated_storage
+  db_name                 = var.db_name
+  db_username             = var.db_username
+  multi_az                = var.db_multi_az
+  skip_final_snapshot     = var.db_skip_final_snapshot
+  deletion_protection     = var.db_deletion_protection
+  backup_retention_period = var.db_backup_retention_period
+  tags                    = local.common_tags
 }

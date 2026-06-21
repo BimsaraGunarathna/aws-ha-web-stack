@@ -61,6 +61,48 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
+variable "deletion_protection" {
+  description = "Block accidental deletion of the RDS instance. Set false in dev to allow terraform destroy."
+  type        = bool
+  default     = true
+}
+
+variable "storage_type" {
+  description = "RDS storage type (gp3, gp2, io1, ...)."
+  type        = string
+  default     = "gp3"
+}
+
+variable "backup_retention_period" {
+  description = "Days to retain automated backups."
+  type        = number
+  default     = 7
+}
+
+variable "performance_insights_enabled" {
+  description = "Enable RDS Performance Insights."
+  type        = bool
+  default     = true
+}
+
+variable "kms_deletion_window_days" {
+  description = "Waiting period (days) before the DB KMS key is deleted."
+  type        = number
+  default     = 7
+}
+
+variable "secret_recovery_window_days" {
+  description = "Recovery window (days) for the Secrets Manager password secret."
+  type        = number
+  default     = 7
+}
+
+variable "password_length" {
+  description = "Length of the generated master password."
+  type        = number
+  default     = 24
+}
+
 variable "tags" {
   description = "Common tags."
   type        = map(string)

@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Name prefix for all resources."
   type        = string
-  default     = "flatrock-webapp"
+  default     = "demo-webapp"
 }
 
 variable "environment" {
@@ -134,4 +134,16 @@ variable "db_skip_final_snapshot" {
   description = "Skip final snapshot on deletion (dev convenience vs safety)."
   type        = bool
   default     = true
+}
+
+variable "db_deletion_protection" {
+  description = "Block accidental deletion of the RDS instance. Set false in dev to allow terraform destroy."
+  type        = bool
+  default     = true
+}
+
+variable "db_backup_retention_period" {
+  description = "Days to retain automated RDS backups."
+  type        = number
+  default     = 7
 }

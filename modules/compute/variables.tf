@@ -70,6 +70,72 @@ variable "acm_certificate_arn" {
   default     = ""
 }
 
+variable "ami_name_pattern" {
+  description = "Name filter for the AMI lookup (most recent match is used)."
+  type        = string
+  default     = "al2023-ami-*-x86_64"
+}
+
+variable "ssl_policy" {
+  description = "TLS security policy for the HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+}
+
+variable "health_check_path" {
+  description = "Target group health check path."
+  type        = string
+  default     = "/"
+}
+
+variable "health_check_interval" {
+  description = "Seconds between target group health checks."
+  type        = number
+  default     = 15
+}
+
+variable "health_check_timeout" {
+  description = "Health check response timeout in seconds."
+  type        = number
+  default     = 5
+}
+
+variable "health_check_healthy_threshold" {
+  description = "Consecutive successes before a target is healthy."
+  type        = number
+  default     = 2
+}
+
+variable "health_check_unhealthy_threshold" {
+  description = "Consecutive failures before a target is unhealthy."
+  type        = number
+  default     = 2
+}
+
+variable "health_check_matcher" {
+  description = "HTTP codes considered healthy."
+  type        = string
+  default     = "200"
+}
+
+variable "health_check_grace_period" {
+  description = "Seconds the ASG waits before health-checking a new instance."
+  type        = number
+  default     = 300
+}
+
+variable "instance_refresh_min_healthy_percentage" {
+  description = "Minimum percent of healthy instances kept during a rolling instance refresh."
+  type        = number
+  default     = 50
+}
+
+variable "alb_5xx_alarm_threshold" {
+  description = "Target 5xx count over the period that trips the CloudWatch alarm."
+  type        = number
+  default     = 5
+}
+
 variable "tags" {
   description = "Common tags."
   type        = map(string)

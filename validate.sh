@@ -10,14 +10,14 @@ if command -v terraform >/dev/null 2>&1; then
   exec bash ci/run-checks.sh
 elif command -v docker >/dev/null 2>&1; then
   echo ">> No local terraform found; using Docker (full toolchain, pinned)."
-  docker build -t flatrock-tf-ci .
+  docker build -t tf-ci .
   # Bind-mount the live tree and run as the current user so no root-owned
   # files (.terraform/) are left behind on the host.
   exec docker run --rm \
     -e HOME=/tmp \
     -u "$(id -u):$(id -g)" \
     -v "$PWD":/work -w /work \
-    flatrock-tf-ci
+    tf-ci
 else
   echo "ERROR: install Terraform (>=1.7) or Docker to validate locally." >&2
   exit 1

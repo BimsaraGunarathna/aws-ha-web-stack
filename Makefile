@@ -1,7 +1,7 @@
 # Convenience wrapper around the verification suite.
 # Run everything locally with `make check`, or in the container with `make docker-check`.
 
-IMAGE := flatrock-tf-ci
+IMAGE := tf-ci
 TF    := terraform
 
 .PHONY: help fmt fmt-check init validate lint security test check docker-build docker-check clean

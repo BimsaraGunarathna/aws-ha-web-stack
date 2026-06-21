@@ -9,10 +9,10 @@
 #
 terraform {
   backend "s3" {
-    bucket         = "flatrock-tfstate-CHANGE-ME" # <-- must be globally unique
+    bucket         = "myproject-tfstate-CHANGE-ME" # <-- must be globally unique
     key            = "webapp/terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "flatrock-tflock"
+    dynamodb_table = "terraform-lock"
     encrypt        = true
   }
 }

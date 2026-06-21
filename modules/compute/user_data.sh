@@ -18,7 +18,7 @@ AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
 cat > /usr/share/nginx/html/index.html <<HTML
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Flat Rock Demo</title>
+<head><meta charset="utf-8"><title>AWS HA Web Stack</title>
 <style>
   body{font-family:system-ui,sans-serif;background:#0f1115;color:#e6e6e6;
        display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
