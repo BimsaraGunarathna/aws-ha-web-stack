@@ -179,6 +179,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
     id     = "expire-old-logs"
     status = "Enabled"
 
+    filter {}
+
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
     }
@@ -200,6 +202,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
   rule {
     id     = "transition-old-versions"
     status = "Enabled"
+
+    filter {}
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
