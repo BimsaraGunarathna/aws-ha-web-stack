@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local env files
+.env
+.env.*
+
+# Validation / test artifacts
+*.log
