@@ -1,7 +1,8 @@
-# One-time bootstrap: creates the S3 bucket and DynamoDB table that the main
-# configuration uses for remote state + locking. This itself uses LOCAL state
-# (chicken-and-egg: you can't store state remotely in a backend that doesn't
-# exist yet). Run this once, then configure backend.tf in the root module.
+# One-time bootstrap: creates the S3 bucket that the main configuration uses for
+# remote state. Locking is handled by the S3 backend itself (use_lockfile), so no
+# DynamoDB table is needed. This itself uses LOCAL state (chicken-and-egg: you
+# can't store state remotely in a backend that doesn't exist yet). Run this once,
+# then configure backend.tf in the root module.
 
 terraform {
   required_version = ">= 1.5.0"
@@ -35,13 +36,7 @@ variable "state_bucket_name" {
   type        = string
 }
 
-variable "lock_table_name" {
-  description = "DynamoDB table name for state locking."
-  type        = string
-  default     = "aws-ha-web-stack-tflock"
-}
-
-# ---- KMS keys ----------------------------------------------------------------
+# ---- KMS key -----------------------------------------------------------------
 resource "aws_kms_key" "state" {
   description             = "KMS key for Terraform state bucket encryption."
   deletion_window_in_days = 7
@@ -69,35 +64,6 @@ resource "aws_kms_key_policy" "state" {
 resource "aws_kms_alias" "state" {
   name          = "alias/${var.state_bucket_name}-key"
   target_key_id = aws_kms_key.state.key_id
-}
-
-resource "aws_kms_key" "dynamodb" {
-  description             = "KMS key for DynamoDB lock table encryption."
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-}
-
-resource "aws_kms_key_policy" "dynamodb" {
-  key_id = aws_kms_key.dynamodb.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "Enable IAM User Permissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_kms_alias" "dynamodb" {
-  name          = "alias/${var.lock_table_name}-key"
-  target_key_id = aws_kms_key.dynamodb.key_id
 }
 
 data "aws_caller_identity" "current" {}
@@ -220,33 +186,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
   }
 }
 
-# ---- Lock table --------------------------------------------------------------
-resource "aws_dynamodb_table" "lock" {
-  name         = var.lock_table_name
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  point_in_time_recovery {
-    enabled = true
-  }
-
-  server_side_encryption {
-    enabled     = true
-    kms_key_arn = aws_kms_key.dynamodb.arn
-  }
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-}
-
 output "state_bucket" {
   description = "Name of the created S3 state bucket."
   value       = aws_s3_bucket.state.id
-}
-
-output "lock_table" {
-  description = "Name of the created DynamoDB lock table."
-  value       = aws_dynamodb_table.lock.name
 }

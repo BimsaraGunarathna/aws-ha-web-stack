@@ -19,6 +19,6 @@ elif command -v docker >/dev/null 2>&1; then
     -v "$PWD":/work -w /work \
     tf-ci
 else
-  echo "ERROR: install Terraform (>=1.7) or Docker to validate locally." >&2
+  echo "ERROR: install Terraform (>=1.10) or Docker to validate locally." >&2
   exit 1
 fi

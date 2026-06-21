@@ -2,19 +2,13 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "TerraformStateBucket",
+      "Sid": "TerraformStateAndLock",
       "Effect": "Allow",
       "Action": "s3:*",
       "Resource": [
         "arn:aws:s3:::aws-ha-web-stack-tfstate-*",
         "arn:aws:s3:::aws-ha-web-stack-tfstate-*/*"
       ]
-    },
-    {
-      "Sid": "TerraformLockTable",
-      "Effect": "Allow",
-      "Action": "dynamodb:*",
-      "Resource": "arn:aws:dynamodb:*:*:table/aws-ha-web-stack-tflock"
     }
   ]
 }

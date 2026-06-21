@@ -62,23 +62,24 @@ on internal resource properties without needing direct resource access.
 5. Security rules — ALB :80 HTTP (optionally :443 HTTPS with :80 → :443 redirect), instances :80 from ALB only, DB from instances only ✔
 6. Variables + modules throughout ✔
 7. `outputs.tf` exposes the load balancer URL, DB endpoint, ASG name, dashboard, VPC ✔
-8. Remote state in S3 + DynamoDB locking (`backend.tf` + `bootstrap/`) ✔
+8. Remote state in S3 with native lockfile locking (`backend.tf` + `bootstrap/`) ✔
 9. This README ✔
 
 **Bonus:** CloudWatch alarm + dashboard ✔ · modules, variable files, workspace-ready ✔ · Nginx welcome page via user data ✔ · DB password auto-generated and stored in AWS Secrets Manager ✔
 
 ## Prerequisites
 
-- Terraform >= 1.5
+- Terraform >= 1.10 (the S3 backend uses native `use_lockfile` locking)
 - AWS credentials configured (`aws configure` or env vars) with permission to create
-  VPC/EC2/ELB/RDS/IAM/CloudWatch/S3/DynamoDB resources
+  VPC/EC2/ELB/RDS/IAM/CloudWatch/S3 resources
 - An AWS account (note: this deploys billable resources — see **Cost**)
 
 ## Deploy
 
 ### 1. Bootstrap the remote state backend (one time)
 
-The S3 bucket + DynamoDB lock table must exist before the main config can use them.
+The S3 bucket must exist before the main config can use it (state locking uses a
+`.tflock` object in the same bucket — no DynamoDB table required).
 
 ```bash
 cd bootstrap
@@ -86,12 +87,12 @@ terraform init
 terraform apply -var="state_bucket_name=<your-globally-unique-bucket>"
 ```
 
-Note the `state_bucket` and `lock_table` outputs.
+Note the `state_bucket` output.
 
 ### 2. Point the root module at that backend
 
-Edit `backend.tf` and set `bucket` (and `region`/`dynamodb_table` if you changed them),
-**or** pass them at init time:
+Edit `backend.tf` and set `bucket` (and `region` if you changed it),
+**or** pass it at init time:
 
 ```bash
 cd ..
@@ -227,7 +228,7 @@ One command, from the repo root:
 
 It auto-detects your setup:
 
-- **If Terraform (>=1.7) is on your PATH**, it runs directly. tflint / trivy /
+- **If Terraform (>=1.10) is on your PATH**, it runs directly. tflint / trivy /
   checkov are used if installed and politely skipped if not — so the core gates
   (fmt, validate, `terraform test`) work with nothing but Terraform.
 - **If Terraform isn't installed but Docker is**, it builds the pinned container

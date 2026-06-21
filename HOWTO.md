@@ -13,7 +13,7 @@ HTTPS instead.)
 
 ## Prerequisites
 
-- Terraform >= 1.5 and the AWS CLI installed
+- Terraform >= 1.10 and the AWS CLI installed
 - A clone of this repo (the `iam/*.json` policy documents are used in step 1)
 - An AWS account with Console access to IAM (to create the policies and role)
 
@@ -21,15 +21,15 @@ HTTPS instead.)
 
 No admin access. The stack creates IAM roles, KMS keys, and Secrets Manager
 secrets, so the deployer needs those permissions — but scoped to this project's
-resources (`aws-ha-web-stack-*`, `aws-ha-web-stack-tfstate-*`,
-`aws-ha-web-stack-tflock`) and to `us-east-1`. After cloning the repo you create
-the customer-managed policies, the deployer role, and a thin base user that can
-assume it — pasting in the JSON documents from [`iam/`](iam/):
+resources (`aws-ha-web-stack-*`, `aws-ha-web-stack-tfstate-*`) and to
+`us-east-1`. After cloning the repo you create the customer-managed policies, the
+deployer role, and a thin base user that can assume it — pasting in the JSON
+documents from [`iam/`](iam/):
 
 | File | Becomes | Purpose |
 |------|---------|---------|
 | `iam/deployer-policy.json` | policy `aws-ha-web-stack-deployer-policy` | EC2/VPC, Auto Scaling, ELB, RDS, CloudWatch/Logs, KMS, Secrets Manager — all restricted to `us-east-1`; IAM scoped to `aws-ha-web-stack-*` roles/profiles |
-| `iam/backend-policy.json` | policy `aws-ha-web-stack-backend-policy` | S3 + DynamoDB scoped to the `aws-ha-web-stack-tfstate-*` buckets and `aws-ha-web-stack-tflock` lock table |
+| `iam/backend-policy.json` | policy `aws-ha-web-stack-backend-policy` | S3 scoped to the `aws-ha-web-stack-tfstate-*` buckets (holds both the state file and its `.tflock` lock object) |
 | `iam/trust-policy.json` | trust policy on role `aws-ha-web-stack-deployer` | Lets your account's identities assume the role (replace `ACCOUNT_ID`) |
 | `iam/assume-deployer-policy.json` | policy `aws-ha-web-stack-assume-deployer` | Lets the base user assume the deployer role — its only permission |
 
@@ -38,9 +38,8 @@ deployer role, and the role is where the scoped access lives. Long-lived access
 keys therefore grant nothing on their own.
 
 > Deploying to a different region? Change `us-east-1` in `iam/deployer-policy.json`
-> before pasting. Renamed `project_name` or the state bucket/lock? Update the
-> `aws-ha-web-stack-*` / `aws-ha-web-stack-tfstate-*` / `aws-ha-web-stack-tflock`
-> patterns to match.
+> before pasting. Renamed `project_name` or the state bucket? Update the
+> `aws-ha-web-stack-*` / `aws-ha-web-stack-tfstate-*` patterns to match.
 
 ### a. Create the two policies (IAM Console)
 
@@ -166,7 +165,8 @@ aws sts get-caller-identity   # ARN should show assumed-role/aws-ha-web-stack-de
 
 ## 2. Bootstrap remote state (one-time per region)
 
-Creates the S3 bucket + DynamoDB lock table that hold Terraform state.
+Creates the S3 bucket that holds Terraform state (locking uses a `.tflock` object
+in the same bucket — no DynamoDB needed).
 
 ```bash
 cd bootstrap
@@ -177,7 +177,7 @@ terraform apply \
 cd ..
 ```
 
-Note the `state_bucket` and `lock_table` outputs.
+Note the `state_bucket` output.
 
 ## 3. Initialize the backend
 
@@ -218,8 +218,8 @@ terraform apply   -var-file=environments/dev.tfvars -var="aws_region=us-east-1" 
 terraform destroy -var-file=environments/dev.tfvars -var="aws_region=us-east-1" -var="db_deletion_protection=false"
 ```
 
-> Bootstrap resources (state bucket, lock table) are kept separately and are not
-> removed by this destroy. Delete them manually only if you no longer need the state.
+> Bootstrap resources (the state bucket) are kept separately and are not removed
+> by this destroy. Delete them manually only if you no longer need the state.
 
 ## Local checks (no AWS needed)
 
