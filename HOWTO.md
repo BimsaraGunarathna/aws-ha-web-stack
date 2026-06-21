@@ -17,20 +17,25 @@ HTTPS instead.)
 - A clone of this repo (the `iam/*.json` policy documents are used in step 1)
 - An AWS account with Console access to IAM (to create the policies and role)
 
-## 1. Create the scoped deployer role from the AWS Console
+## 1. Create the scoped deployer role and base user
 
 No admin access. The stack creates IAM roles, KMS keys, and Secrets Manager
 secrets, so the deployer needs those permissions — but scoped to this project's
 resources (`aws-ha-web-stack-*`, `aws-ha-web-stack-tfstate-*`,
 `aws-ha-web-stack-tflock`) and to `us-east-1`. After cloning the repo you create
-two customer-managed policies and one role in the IAM console, pasting in the JSON
-documents from [`iam/`](iam/):
+the customer-managed policies, the deployer role, and a thin base user that can
+assume it — pasting in the JSON documents from [`iam/`](iam/):
 
 | File | Becomes | Purpose |
 |------|---------|---------|
 | `iam/deployer-policy.json` | policy `aws-ha-web-stack-deployer-policy` | EC2/VPC, Auto Scaling, ELB, RDS, CloudWatch/Logs, KMS, Secrets Manager — all restricted to `us-east-1`; IAM scoped to `aws-ha-web-stack-*` roles/profiles |
 | `iam/backend-policy.json` | policy `aws-ha-web-stack-backend-policy` | S3 + DynamoDB scoped to the `aws-ha-web-stack-tfstate-*` buckets and `aws-ha-web-stack-tflock` lock table |
-| `iam/trust-policy.json` | trust policy on role `aws-ha-web-stack-deployer` | Lets your identity assume the role (replace `ACCOUNT_ID`) |
+| `iam/trust-policy.json` | trust policy on role `aws-ha-web-stack-deployer` | Lets your account's identities assume the role (replace `ACCOUNT_ID`) |
+| `iam/assume-deployer-policy.json` | policy `aws-ha-web-stack-assume-deployer` | Lets the base user assume the deployer role — its only permission |
+
+The base user holds no standing permissions: it can do nothing except assume the
+deployer role, and the role is where the scoped access lives. Long-lived access
+keys therefore grant nothing on their own.
 
 > Deploying to a different region? Change `us-east-1` in `iam/deployer-policy.json`
 > before pasting. Renamed `project_name` or the state bucket/lock? Update the
@@ -95,29 +100,68 @@ aws iam attach-role-policy --role-name aws-ha-web-stack-deployer \
 
 (Note the triple slash: `file://` + the absolute path `/tmp/trust.json`.)
 
-### c. Use the role locally for Terraform
+### c. Create the base user that assumes the role (IAM Console)
 
-Terraform runs from your machine, so it still needs local credentials that assume
-the role. Append to `~/.aws/config` (replace `ACCOUNT_ID`; `source_profile` is an
-existing local identity allowed to assume the role):
+The role can't authenticate by itself — something has to assume it. Create a
+dedicated user whose *only* permission is to assume the deployer role.
+
+1. **IAM → Policies → Create policy → JSON**, paste `iam/assume-deployer-policy.json`,
+   name it `aws-ha-web-stack-assume-deployer`, **Create policy**.
+2. **IAM → Users → Create user**, name it `aws-ha-web-stack-cli`. Do **not** give
+   it console access.
+3. On **Set permissions → Attach policies directly**, tick
+   `aws-ha-web-stack-assume-deployer`. **Create user**.
+4. Open the user → **Security credentials → Create access key** → use case
+   **Command Line Interface (CLI)**. Copy the **Access key ID** and **Secret**.
+
+**Prefer the CLI?**
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+aws iam create-policy --policy-name aws-ha-web-stack-assume-deployer \
+  --policy-document file://iam/assume-deployer-policy.json
+
+aws iam create-user --user-name aws-ha-web-stack-cli
+aws iam attach-user-policy --user-name aws-ha-web-stack-cli \
+  --policy-arn arn:aws:iam::$ACCOUNT_ID:policy/aws-ha-web-stack-assume-deployer
+
+aws iam create-access-key --user-name aws-ha-web-stack-cli   # note the key + secret
+```
+
+### d. Wire up the two local profiles and verify
+
+The base user holds the access keys; the deployer profile assumes the role using
+them. Configure the base user, then add the role profile.
+
+```bash
+# Base user credentials (writes to ~/.aws/credentials).
+aws configure --profile aws-ha-web-stack-cli
+# AWS Access Key ID     : <from step c>
+# AWS Secret Access Key : <from step c>
+# Default region name   : us-east-1
+# Default output format  : json
+```
+
+Append the role profile to `~/.aws/config` (replace `ACCOUNT_ID`; `source_profile`
+points at the base user you just configured):
 
 ```ini
 [profile aws-ha-web-stack-deployer]
 role_arn       = arn:aws:iam::ACCOUNT_ID:role/aws-ha-web-stack-deployer
-source_profile = default
+source_profile = aws-ha-web-stack-cli
 region         = us-east-1
 ```
 
-Select it and verify:
+Select the deployer profile and verify it resolves to the assumed role:
 
 ```bash
 export AWS_PROFILE=aws-ha-web-stack-deployer
 aws sts get-caller-identity   # ARN should show assumed-role/aws-ha-web-stack-deployer/...
 ```
 
-> Prefer not to assume a role locally? In the console create an **IAM user**
-> instead, attach the same two policies, generate an access key, then
-> `aws configure --profile aws-ha-web-stack-deployer`. Either way, make sure
+> Already authenticate via SSO or an existing admin user? Skip the base user and
+> point `source_profile` at that identity instead — just make sure
 > `aws sts get-caller-identity` succeeds before continuing.
 
 ## 2. Bootstrap remote state (one-time per region)

@@ -15,6 +15,13 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = {
+      project   = "aws-ha-web-stack"
+      ManagedBy = "terraform"
+    }
+  }
 }
 
 variable "aws_region" {
