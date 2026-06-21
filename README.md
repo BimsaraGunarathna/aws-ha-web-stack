@@ -8,7 +8,7 @@ strict tiered security groups, remote state, and CloudWatch monitoring.
 
 ```
                     Internet
-                       │  HTTP :80
+                       │  HTTPS :443  (HTTP :80 → 301 redirect)
                 ┌──────▼──────┐
                 │     ALB     │   public subnets (2 AZs)
                 │  (alb-sg)   │
@@ -55,13 +55,13 @@ on internal resource properties without needing direct resource access.
 2. ASG with ≥2 instances (`min_size`/`desired_capacity` default to 2) ✔
 3. ALB distributes traffic across the ASG ✔
 4. Managed database (RDS PostgreSQL) ✔
-5. Security rules — ALB :80 public, instances :80 from ALB only, DB from instances only ✔
+5. Security rules — ALB :443 HTTPS (with :80 → :443 redirect), instances :80 from ALB only, DB from instances only ✔
 6. Variables + modules throughout ✔
 7. `outputs.tf` exposes the load balancer URL, DB endpoint, ASG name, dashboard, VPC ✔
 8. Remote state in S3 + DynamoDB locking (`backend.tf` + `bootstrap/`) ✔
 9. This README ✔
 
-**Bonus:** CloudWatch alarm + dashboard ✔ · modules, variable files, workspace-ready ✔ · Nginx welcome page via user data ✔
+**Bonus:** CloudWatch alarm + dashboard ✔ · modules, variable files, workspace-ready ✔ · Nginx welcome page via user data ✔ · DB password auto-generated and stored in AWS Secrets Manager ✔
 
 ## Prerequisites
 
@@ -94,10 +94,12 @@ cd ..
 terraform init -backend-config="bucket=<your-globally-unique-bucket>"
 ```
 
-### 3. Set the database password (never commit it)
+### 3. Provide an ACM certificate ARN
+
+The ALB serves HTTPS. You need an ACM certificate in the target region. If you don't have one yet, request it in the AWS Console or via CLI, then pass the ARN:
 
 ```bash
-export TF_VAR_db_password='<a-strong-password>'
+export TF_VAR_acm_certificate_arn='arn:aws:acm:...'
 ```
 
 ### 4. Plan and apply
@@ -142,29 +144,30 @@ terraform apply -var-file="environments/prod.tfvars"
 | `aws_region` | `eu-central-1` | Region to deploy into |
 | `instance_type` | `t3.micro` | App instance size |
 | `min_size` / `max_size` / `desired_capacity` | `2` / `4` / `2` | ASG bounds |
+| `cpu_target` | `50` | ASG target-tracking CPU % |
+| `acm_certificate_arn` | — | **Required**, ACM cert ARN for ALB HTTPS |
 | `db_engine` | `postgres` | `postgres` (5432) or `mysql` (3306) |
+| `db_engine_version` | `16` | RDS engine version |
 | `db_instance_class` | `db.t3.micro` | RDS size |
+| `db_allocated_storage` | `20` | RDS storage (GB) |
 | `db_multi_az` | `false` | RDS standby in a 2nd AZ |
-| `db_password` | — | **Required**, set via `TF_VAR_db_password` |
+| `db_skip_final_snapshot` | `true` | Skip final snapshot on delete |
 
 ## Cost note
 
 This is **not** entirely free-tier. The NAT gateway, ALB, and RDS each bill hourly.
 Expect a few USD if you leave it running for a day; `terraform destroy` when done.
 
-## Production hardening (intentionally out of scope for the task)
+## Production hardening
 
-These are deliberate demo simplifications — worth calling out rather than hiding:
+These are deliberate demo trade-offs — worth calling out rather than hiding:
 
-- **Secrets:** the DB password is a sensitive variable here. In production, store it in
-  AWS Secrets Manager (or SSM Parameter Store) and have RDS/the app read it, rather than
-  passing it through Terraform state.
 - **NAT HA:** one NAT gateway is a single-AZ dependency. Production uses one per AZ.
-- **RDS:** `skip_final_snapshot = true` and `deletion_protection = false` make teardown
-  easy but are unsafe for real data; flip both for production, and enable `multi_az`.
-- **TLS:** the listener is HTTP only. Production adds an HTTPS listener with an ACM
-  certificate and redirects 80 → 443.
+- **RDS:** `skip_final_snapshot = true` makes teardown easy but is unsafe for real data;
+  set it to `false` for production, and enable `multi_az`.
 - **State:** real setups separate state per environment and lock down the bucket policy.
+- **ACM:** the demo assumes a pre-existing ACM certificate. Production automates cert
+  provisioning and DNS validation via Route 53.
 
 ## Testing & quality gates
 
@@ -190,7 +193,7 @@ that actually matter for this task:
 - the ASG has ≥2 instances with ELB health checks;
 - the ALB is an internet-facing application LB on port 80;
 - RDS is private and encrypted;
-- the input validations reject bad values (single AZ, unknown environment, weak password).
+- the input validations reject bad values (single AZ, unknown environment).
 
 Because `terraform test` cannot reference module-internal resources directly, the tests
 rely on the **test-support outputs** each module exposes to verify resource properties.
@@ -235,11 +238,12 @@ validate.
 
 ### A note on the security scanners
 
-trivy and checkov flag the **intentional** demo tradeoffs (public ALB ingress,
-HTTP-only listener, RDS teardown convenience). Rather than blanket-disable the
-scanners, those specific checks are listed with justifications in `.checkov.yaml`
-and `.trivyignore` — and all of them are the same items in *Production hardening*
-above. Set `STRICT_SECURITY=1` to make the scans gate the build.
+trivy and checkov flag the **intentional** demo trade-offs (public ALB ingress,
+unrestricted instance egress for package installs, RDS teardown convenience).
+Rather than blanket-disable the scanners, those specific checks are listed with
+justifications in `.checkov.yaml` and `.trivyignore` — and all of them are the
+same items in *Production hardening* above. Set `STRICT_SECURITY=1` to make the
+scans gate the build.
 
 ### Validate before submitting
 

@@ -38,6 +38,12 @@ variable "az_count" {
   }
 }
 
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs for security auditing."
+  type        = bool
+  default     = true
+}
+
 # ---- Compute ----
 variable "instance_type" {
   description = "EC2 instance type for the app tier."
@@ -63,6 +69,17 @@ variable "desired_capacity" {
   default     = 2
 }
 
+variable "cpu_target" {
+  description = "Target average CPU percent for auto-scaling policy."
+  type        = number
+  default     = 50
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for the ALB HTTPS listener."
+  type        = string
+}
+
 # ---- Database ----
 variable "db_engine" {
   description = "Managed database engine."
@@ -70,10 +87,22 @@ variable "db_engine" {
   default     = "postgres"
 }
 
+variable "db_engine_version" {
+  description = "Database engine version."
+  type        = string
+  default     = "16"
+}
+
 variable "db_instance_class" {
   description = "RDS instance class."
   type        = string
   default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "RDS allocated storage in GB."
+  type        = number
+  default     = 20
 }
 
 variable "db_name" {
@@ -88,19 +117,14 @@ variable "db_username" {
   default     = "appadmin"
 }
 
-variable "db_password" {
-  description = "Database master password. Set via TF_VAR_db_password; never commit."
-  type        = string
-  sensitive   = true
-
-  validation {
-    condition     = length(var.db_password) >= 8
-    error_message = "db_password must be at least 8 characters."
-  }
-}
-
 variable "db_multi_az" {
   description = "Run an RDS standby in a second AZ."
   type        = bool
   default     = false
+}
+
+variable "db_skip_final_snapshot" {
+  description = "Skip final snapshot on deletion (dev convenience vs safety)."
+  type        = bool
+  default     = true
 }

@@ -49,16 +49,16 @@ variable "db_username" {
   default     = "appadmin"
 }
 
-variable "db_password" {
-  description = "Master password. Pass via TF_VAR_db_password, never commit it."
-  type        = string
-  sensitive   = true
-}
-
 variable "multi_az" {
   description = "Whether to run a standby in a second AZ (production HA)."
   type        = bool
   default     = false
+}
+
+variable "skip_final_snapshot" {
+  description = "Skip final snapshot on deletion (dev convenience vs safety)."
+  type        = bool
+  default     = true
 }
 
 variable "tags" {
