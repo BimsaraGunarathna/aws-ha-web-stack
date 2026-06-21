@@ -74,15 +74,15 @@ variable "storage_type" {
 }
 
 variable "backup_retention_period" {
-  description = "Days to retain automated backups."
+  description = "Days to retain automated backups. Default 0 (disabled) for AWS Free plan compatibility; raise for production."
   type        = number
-  default     = 7
+  default     = 0
 }
 
 variable "performance_insights_enabled" {
-  description = "Enable RDS Performance Insights."
+  description = "Enable RDS Performance Insights. Default false (not available on the AWS Free plan); enable for production."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "kms_deletion_window_days" {

@@ -82,9 +82,10 @@ resource "aws_db_instance" "this" {
   backup_retention_period = var.backup_retention_period
   copy_tags_to_snapshot   = true
 
-  auto_minor_version_upgrade      = true
-  performance_insights_enabled    = var.performance_insights_enabled
-  performance_insights_kms_key_id = aws_kms_key.db.arn
+  auto_minor_version_upgrade   = true
+  performance_insights_enabled = var.performance_insights_enabled
+  # Only set the PI KMS key when PI is enabled; setting it otherwise is a conflict.
+  performance_insights_kms_key_id = var.performance_insights_enabled ? aws_kms_key.db.arn : null
 
   enabled_cloudwatch_logs_exports = var.engine == "postgres" ? ["postgresql"] : ["error", "general", "slowquery"]
 

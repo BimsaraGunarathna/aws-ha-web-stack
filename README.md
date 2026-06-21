@@ -169,7 +169,8 @@ terraform apply -var-file="environments/prod.tfvars"
 | `db_multi_az` | `false` | RDS standby in a 2nd AZ |
 | `db_skip_final_snapshot` | `true` | Skip final snapshot on delete |
 | `db_deletion_protection` | `true` | Block accidental RDS deletion — set `false` to allow `terraform destroy` |
-| `db_backup_retention_period` | `7` | Days to retain automated RDS backups |
+| `db_backup_retention_period` | `0` | Days to retain automated RDS backups. `0` (disabled) for AWS Free plan; raise for production |
+| `db_performance_insights_enabled` | `false` | RDS Performance Insights. `false` for AWS Free plan; enable for production |
 
 ## Cost note
 
@@ -183,7 +184,10 @@ These are deliberate demo trade-offs — worth calling out rather than hiding:
 - **NAT HA:** one NAT gateway is a single-AZ dependency. Production uses one per AZ.
 - **RDS:** `skip_final_snapshot = true` makes teardown easy but is unsafe for real data;
   set it to `false` for production, and enable `multi_az`. Deletion protection is already
-  enabled by default.
+  enabled by default. Backups and Performance Insights default **off**
+  (`db_backup_retention_period = 0`, `db_performance_insights_enabled = false`) so the
+  stack deploys on the restricted AWS Free plan — re-enable both for production
+  (e.g. `db_backup_retention_period = 7`, `db_performance_insights_enabled = true`).
 - **State:** real setups separate state per environment and lock down the bucket policy.
 - **HTTPS/ACM:** the demo defaults to plain HTTP on :80 for zero-friction setup.
   Production should set `enable_https = true` with an ACM certificate; cert provisioning

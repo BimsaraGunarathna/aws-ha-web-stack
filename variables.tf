@@ -143,7 +143,13 @@ variable "db_deletion_protection" {
 }
 
 variable "db_backup_retention_period" {
-  description = "Days to retain automated RDS backups."
+  description = "Days to retain automated RDS backups. Defaults to 0 (disabled) so the stack works on the restricted AWS Free plan, which caps retention. Raise it (e.g. 7) for production."
   type        = number
-  default     = 7
+  default     = 0
+}
+
+variable "db_performance_insights_enabled" {
+  description = "Enable RDS Performance Insights. Defaults to false because it is not available on the restricted AWS Free plan. Enable it for production."
+  type        = bool
+  default     = false
 }
