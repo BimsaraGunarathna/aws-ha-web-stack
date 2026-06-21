@@ -24,6 +24,9 @@
         "cloudwatch:PutMetricAlarm",
         "cloudwatch:DeleteAlarms",
         "cloudwatch:DescribeAlarms",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource",
         "logs:CreateLogGroup",
         "logs:DeleteLogGroup",
         "logs:DescribeLogGroups",
@@ -60,13 +63,15 @@
         "kms:ScheduleKeyDeletion",
         "kms:EnableKeyRotation",
         "kms:TagResource",
+        "kms:UntagResource",
         "secretsmanager:CreateSecret",
         "secretsmanager:DeleteSecret",
         "secretsmanager:DescribeSecret",
         "secretsmanager:GetSecretValue",
         "secretsmanager:PutSecretValue",
         "secretsmanager:GetResourcePolicy",
-        "secretsmanager:TagResource"
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource"
       ],
       "Resource": "*",
       "Condition": { "StringEquals": { "aws:RequestedRegion": "us-east-1" } }
@@ -92,6 +97,8 @@
         "iam:CreateInstanceProfile",
         "iam:DeleteInstanceProfile",
         "iam:GetInstanceProfile",
+        "iam:TagInstanceProfile",
+        "iam:UntagInstanceProfile",
         "iam:AddRoleToInstanceProfile",
         "iam:RemoveRoleFromInstanceProfile"
       ],
