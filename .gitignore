@@ -24,6 +24,9 @@ terraform.rc
 *.swo
 *~
 
+# Claude Code
+CLAUDE.md
+
 # Local env files
 .env
 .env.*
